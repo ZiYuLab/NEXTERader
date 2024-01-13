@@ -1,0 +1,174 @@
+# NEXTERadar config
+
+our: "red"
+
+robot:
+  middle_robot_height: 0.4
+  clearDelayTime: 1
+
+source:
+  #type: "img"
+  #type: "video"
+  type: "camera"
+  video_path: "../lib/video/test.mp4"
+  img_path: "../lib/img/test.jpg"
+  #map_path: "../lib/img/map2023.jpg"
+  map_path: "../lib/img/map2024.png"
+
+camara:
+  device: 0 # 打开0号相机
+  resolution: # 设置分辨率
+    width: 1280
+    height: 1024
+  pixel_format: 17301512 # 设置像素格式PixelType_Gvsp_BayerGR8
+  exposure_time: 3000 # 设置曝光时间
+  gain: 10.0 # 设置增益
+  frame_rate: 120 # 设置帧率上限
+
+camera_data:
+  camera_matrix:
+    0: 1.273020955555724e+3
+    1: 0
+    2: 6.520438298015340e+2
+    3: 0
+    4: 1.279186758868166e+3
+    5: 2.609125169958485e+2
+    6: 0
+    7: 0
+    8: 1
+  dist_coeffs:
+    0: -0.057703347986055
+    1: 0.098640709531910
+    2: 0
+    3: 0
+    4: 0
+
+net:
+  device: 0
+  onnx_path: "../lib/model/1_0_0.onnx"
+  trt_path: "../lib/model/1_0_0.trt"
+  input_h: 1280
+  input_w: 1280
+  conf_threshold: 0.3
+  nms_threshold: 0.3
+  batch_size: 1
+  num_class: 15
+
+data:
+  map_x_max: 28
+  map_y_max: 15
+
+  #2023
+  demarcate_red_points: #必须与下面gui标定数量相等
+    0:
+      x: 9.073673364
+      y: 6.635160681
+      z: 0.0
+    1:
+      x: 9.088098918
+      y: 9.484877127
+      z: 0.0
+    2:
+      x: 10.44410098
+      y: 7.103024575
+      z: 0.6
+    3:
+      x: 10.42967543
+      y: 9.045368809
+      z: 0.6
+
+  demarcate_blue_points: #必须与下面gui标定数量相等
+    0:
+      x: 18.92632664
+      y: 8.364839319
+      z: 0.0
+    1:
+      x: 18.91190108
+      y: 5.515122873
+      z: 0.0
+    2:
+      x: 17.55589902
+      y: 7.896975425
+      z: 0.6
+    3:
+      x: 17.57032457
+      y: 5.95463138
+      z: 0.6
+
+# 2024
+#  demarcate_red_points: #必须与下面gui标定数量相等
+#    0:
+#      x: 8.889334001
+#      y: 6.764972777
+#      z: 0.0
+#    1:
+#      x: 8.875312969
+#      y: 9.215063521
+#      z: 0.0
+#    2:
+#      x: 10.83825739
+#      y: 7.391107078
+#      z: 0.6
+#    3:
+#      x: 12.21231848
+#      y: 10.87568058
+#      z: 0.6
+#
+#  demarcate_blue_points: #必须与下面gui标定数量相等
+#    0:
+#      x: 19.110666
+#      y: 8.235027223
+#      z: 0.0
+#    1:
+#      x: 19.12468703
+#      y: 5.784936479
+#      z: 0.0
+#    2:
+#      x: 17.16174261
+#      y: 7.608892922
+#      z: 0.6
+#    3:
+#      x: 15.78768152
+#      y: 4.124319419
+#      z: 0.6
+
+  map_data_path: ../lib/data/mapData2024.CSV
+
+gui:
+  map: "lib/gui/map2023.jpg"
+  demarcate_point_num: 4
+
+class_name:
+  0: "car"
+  1: "R1"
+  2: "R2"
+  3: "R3"
+  4: "R4"
+  5: "R5"
+  6: "B1"
+  7: "B2"
+  8: "B3"
+  9: "B4"
+  10: "B5"
+  11: "base"
+  12: "ignore"
+  13: "R7"
+  14: "B7"
+
+#根据类别索引设置 以下为模板 0代表car -1代表不识别
+set_car_armour:
+  0: 0
+  1: 1
+  2: 2
+  3: 3
+  4: 4
+  5: 5
+  6: 101
+  7: 102
+  8: 103
+  9: 104
+  10: 105
+  11: -1
+  12: -1
+  13: 7
+  14: 107
