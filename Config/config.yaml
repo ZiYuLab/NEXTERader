@@ -8,9 +8,9 @@ robot:
 
 source:
   #type: "img"
-  #type: "video"
+  type: "video"
   #type: "camera"
-  type: "camera_usb"
+  #type: "camera_usb"
   video_path: "../lib/video/test.mp4"
   img_path: "../lib/img/test.jpg"
   #map_path: "../lib/img/map2023.jpg"
