@@ -35,10 +35,14 @@ ne::NEImgStream::NEImgStream(ne::NEConfig &config)
         Hik.SetResolution(_config.getConfig()["camara"]["resolution"]["width"].as<int>(), //设置分辨率
                           _config.getConfig()["camara"]["resolution"]["height"].as<int>());
         Hik.SetPixelFormat(_config.getConfig()["camara"]["pixel_format"].as<int>()); //设置像素格式
+        //Hik.SetPixelFormat(PixelType_Gvsp_BayerBG8); //设置像素格式
         Hik.SetExposureTime(_config.getConfig()["camara"]["exposure_time"].as<int>()); //设置曝光时间
         Hik.SetGAIN(_config.getConfig()["camara"]["gain"].as<float>()); //设置增益
         Hik.SetFrameRate(_config.getConfig()["camara"]["frame_rate"].as<int>()); //设置帧率上限
         Hik.SetStreamOn();//开始取流
+
+        //sleep(5);
+
         cv::Mat tmp;
         getFrame();
         sourceInfo.row = _frame.rows;
@@ -75,6 +79,20 @@ ne::NEImgStream::NEImgStream(ne::NEConfig &config)
     {
         _type = TYPE_T::IMG_DIR;
         ASSERT(0);
+    }
+    else if (type == "camera_usb")
+    {
+        _type = TYPE_T::CAMERA_USB;
+        int usbCamID = _config.getConfig()["source"]["usb_camera_path"].as<int>();
+        //CHECK_PATH(_path.c_str());
+        _cap.set(cv::CAP_PROP_BRIGHTNESS, 2);
+        //_cap.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
+        _cap.open(usbCamID);
+        if (!_cap.isOpened())
+        LOG_ERROR("USB Camera Open Fail!");
+
+        sourceInfo.row = (int)_cap.get(cv::CAP_PROP_FRAME_WIDTH);
+        sourceInfo.col = (int)_cap.get(cv::CAP_PROP_FRAME_WIDTH);
     }
     else
     {
@@ -134,8 +152,23 @@ bool ne::NEImgStream::getFrame()
             ASSERT(0);
             return false;
         }
+        case CAMERA_USB:
+        {
+            _cap >> _frame;
+            if (_frame.empty())
+            {
+                LOG_INFO("Video End!");
+                return false;
+            }
+            return true;
+        }
         default:
+        {
+            LOG_ERROR("Source Type Error!");
+            ASSERT(0);
             return false;
+        }
+
     }
 }
 

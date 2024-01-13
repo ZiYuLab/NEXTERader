@@ -374,14 +374,18 @@ void HikCam::GetMat(cv::Mat &dst){
         if(nRet != MV_OK){
             printf("[CAMERA] No data[%x]\n", nRet);
         }
+
+
         cv::Mat src = cv::Mat(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC1);
         memcpy(src.data, pData, stImageInfo.nWidth * stImageInfo.nHeight * 1);
         cv::cvtColor(src, dst, cv::COLOR_BayerGR2BGR);
+
         /*
         cv::Mat src = cv::Mat(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC3);
         memcpy(src.data, pData, stImageInfo.nWidth * stImageInfo.nHeight * 3);
         cv::cvtColor(src, dst, cv::COLOR_RGB2BGR);
-         */
+        */
+
         if(pData){
             delete[] pData;
             pData = NULL;

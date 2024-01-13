@@ -31,11 +31,12 @@ namespace ne
             CAMERA,
             VIDEO,
             IMG,
+            CAMERA_USB,
             IMG_DIR,
             NULL_TYPE
         } _type;
         std::string _path;
-        int _camID = 0;
+        //int _usb_camID = 0;
         cv::Mat _mapSource;
         cv::Mat _map;
         cv::VideoCapture _cap;

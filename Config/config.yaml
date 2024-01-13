@@ -9,11 +9,14 @@ robot:
 source:
   #type: "img"
   #type: "video"
-  type: "camera"
+  #type: "camera"
+  type: "camera_usb"
   video_path: "../lib/video/test.mp4"
   img_path: "../lib/img/test.jpg"
   #map_path: "../lib/img/map2023.jpg"
-  map_path: "../lib/img/map2024.png"
+  #map_path: "../lib/img/map2024.png"
+  map_path: "../lib/img/map2024_2.png"
+  usb_camera_path: 0
 
 camara:
   device: 0 # 打开0号相机
@@ -21,7 +24,7 @@ camara:
     width: 1280
     height: 1024
   pixel_format: 17301512 # 设置像素格式PixelType_Gvsp_BayerGR8
-  exposure_time: 3000 # 设置曝光时间
+  exposure_time: 6000 # 设置曝光时间
   gain: 10.0 # 设置增益
   frame_rate: 120 # 设置帧率上限
 
