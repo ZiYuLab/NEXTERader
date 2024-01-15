@@ -18,35 +18,33 @@ namespace ne
 {
 
     std::mutex NESerial::mutSerialWriteBuffers_;
-    NESerial::NESerial(char *DevicePlace)
-    :DevicePath_(DevicePlace)
+    NESerial::NESerial(std::string DevicePlace)
+            :DevicePath_(DevicePlace)
     {
-
         if (!init())
         {
             open_ = false;
-            ASSERT(0); // Serial Port OpenError
+            //ASSERT(0); // Serial Port OpenError
         }
         else
         {
             open_ = true;
         }
-
     }
 
     int NESerial::init()
     {
-        printf("\n  Loading Serial Port...");
-        fd_ = open(DevicePath_, O_RDWR | O_NOCTTY);
+        LOG_INFO("Loading Serial Port...");
+        fd_ = open(DevicePath_.c_str(), O_RDWR | O_NOCTTY);
 
         if (fd_ == -1) /* Error Checking */
         {
-            printf("\n  Error! in Opening %s", DevicePath_);
+            printf("\n  Error! in Opening %s", DevicePath_.c_str());
             return 0;
         }
 
         else
-            printf("\n  %s Opened Successfully ", DevicePath_);
+            LOG_SUCCESS(DevicePath_ << " Opened Successfully ");
 
         termios SerialPortSettings; //串口配置结构体
         tcgetattr(fd_, &SerialPortSettings);
@@ -79,33 +77,36 @@ namespace ne
         // 应用设置
         tcsetattr(fd_,TCSANOW,&SerialPortSettings);
 
-        printf("\n +----------------------------------+");
-        printf("\n |        Serial Port Open!         |");
-        printf("\n +----------------------------------+");
+        LOG_SUCCESS("+----------------------------------+");
+        LOG_SUCCESS("|        Serial Port Open!         |");
+        LOG_SUCCESS("+----------------------------------+");
 
         printf("\n");
 
         return 1;
     }
 
-    int NESerial::send(NE_8U *buffer, int count)
+    int NESerial::send(NE_8U * buffer, int count)
     {
         if (isOpen())
         {
             if (debugWrite_)
             {
+                //printf("print\n");
                 printf("\n\n  debug:\n  ");
                 for (int i = 0; i < count; i++)
                 {
-                    if (buffer[i] < 16)
+                    if (*(buffer + i) < 16)
                         printf("0x0%0X ", buffer[i]);
                     else
                         printf("0x%0X ", buffer[i]);
                 }
                 printf("\n  %d-bytes \n", count);
+                return count;
             }
             else
             {
+                //printf("printd\n");
                 // printf("\n--------");
                 if (showWrite_)
                     printf("\n  ->");
@@ -124,7 +125,6 @@ namespace ne
             ASSERT(0); // Serial Port OpenError
             return 0;
         }
-
     }
 
     int NESerial::send2Judge(NE_16U cmdID, std::vector<NE_8U> *message, int count)
@@ -134,38 +134,38 @@ namespace ne
             std::vector<NE_8U> buffer;
 
             // header -> SOF 1-byte
-            buffer.push_back(0xA5);
+            buffer.emplace_back(0xA5);
 
             // header -> data_length 2-byte
             ne16U2Ne8U.ne16UIN = count;
-            buffer.push_back(ne16U2Ne8U.ne8uOUT[1]);
-            buffer.push_back(ne16U2Ne8U.ne8uOUT[0]); // 发送顺序待处理
+            buffer.emplace_back(ne16U2Ne8U.ne8uOUT[1]);
+            buffer.emplace_back(ne16U2Ne8U.ne8uOUT[0]); // 发送顺序待处理
 
             // header -> seq
-            buffer.push_back(0); // 包序号待处理
+            buffer.emplace_back(0); // 包序号待处理
 
             // header CRC-8 1-byte
-            buffer.push_back(Get_CRC8_Check_Sum(&buffer[0], buffer.size()));
+            buffer.emplace_back(Get_CRC8_Check_Sum(&buffer[0], buffer.size()));
 
             // cmdID
             ne16U2Ne8U.ne16UIN = cmdID;
-            buffer.push_back(ne16U2Ne8U.ne8uOUT[1]);
-            buffer.push_back(ne16U2Ne8U.ne8uOUT[0]);
+            buffer.emplace_back(ne16U2Ne8U.ne8uOUT[1]);
+            buffer.emplace_back(ne16U2Ne8U.ne8uOUT[0]);
 
             // data
             for (int i = 0; i < count; i++)
             {
-                buffer.push_back((*message)[i]);
+                buffer.emplace_back((*message)[i]);
             }
 
             const NE_16U crc16Result = Get_CRC16_Check_Sum(&buffer[0], buffer.size());
             ne16U2Ne8U.ne16UIN = crc16Result;
 
             // frame_tail CRC-16
-            buffer.push_back(ne16U2Ne8U.ne8uOUT[1]);
-            buffer.push_back(ne16U2Ne8U.ne8uOUT[0]);
+            buffer.emplace_back(ne16U2Ne8U.ne8uOUT[1]);
+            buffer.emplace_back(ne16U2Ne8U.ne8uOUT[0]);
 
-            send(&buffer[0], buffer.size());
+            return send(&buffer[0], buffer.size());
         }
         else
         {
@@ -254,7 +254,8 @@ namespace ne
             }
             else
             {
-                if (i < buffers->size()) {
+                if (i < buffers->size())
+                {
 
                     if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() > 1000 / frequency)
                     {

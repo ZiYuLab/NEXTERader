@@ -1,12 +1,15 @@
 # NEXTERadar config
 
-our: "red"
+# 配置文件
 
-robot:
-  middle_robot_height: 0.4
-  clearDelayTime: 1
+our: "red" # 我方颜色，用于确定标定数据
+serial_path: "/dev/ttyUSB0" # 串口，没有串口却想看串口数据可以在main函数循环前调用方法 serial.debugWrite()
 
-source:
+robot: # 设置机器人基本信息
+  middle_robot_height: 0.4 # 此处设置的机器人平均高度一半，用于计算yolo框框中心到地面距离
+  clearDelayTime: 1 # 目前没用
+
+source: # 源选择，camera 特指海康
   #type: "img"
   type: "video"
   #type: "camera"
@@ -14,11 +17,11 @@ source:
   video_path: "../lib/video/test.mp4"
   img_path: "../lib/img/test.jpg"
   #map_path: "../lib/img/map2023.jpg"
-  #map_path: "../lib/img/map2024.png"
-  map_path: "../lib/img/map2024_2.png"
+  map_path: "../lib/img/map2024.png"
+  #map_path: "../lib/img/map2024_2.png"
   usb_camera_path: 0
 
-camara:
+camara: # 相机参数，海康相机
   device: 0 # 打开0号相机
   resolution: # 设置分辨率
     width: 1280
@@ -28,7 +31,7 @@ camara:
   gain: 10.0 # 设置增益
   frame_rate: 120 # 设置帧率上限
 
-camera_data:
+camera_data: # 内参畸变
   camera_matrix:
     0: 1.273020955555724e+3
     1: 0
@@ -46,23 +49,23 @@ camera_data:
     3: 0
     4: 0
 
-net:
-  device: 0
-  onnx_path: "../lib/model/1_0_0.onnx"
-  trt_path: "../lib/model/1_0_0.trt"
-  input_h: 1280
+net: # 神经网络设置
+  device: 0 # 显卡设备编号
+  onnx_path: "../lib/model/1_0_0.onnx" # 模型位置
+  trt_path: "../lib/model/1_0_0.trt" # trt位置，与上一个应为同名同目录
+  input_h: 1280 # 模型长宽
   input_w: 1280
-  conf_threshold: 0.3
-  nms_threshold: 0.3
-  batch_size: 1
-  num_class: 15
+  conf_threshold: 0.3 # 置信度阈值，yolo8只有一个置信度
+  nms_threshold: 0.3 # nms 非极大值抑制阈值
+  batch_size: 1 # 不要改，千万的
+  num_class: 15 # 类别数量，按照实际修改
 
 data:
-  map_x_max: 28
+  map_x_max: 28 # 场地x/y 长宽 除非DJI场地大改
   map_y_max: 15
 
-  #2023
-  demarcate_red_points: #必须与下面gui标定数量相等
+  #2023 标定数据，也可以使用自己喜欢的，但是务必要与下方标定点数相同
+  demarcate_red_points: #必须与下面gui标定数量相等 自己是红方
     0:
       x: 9.073673364
       y: 6.635160681
@@ -80,7 +83,7 @@ data:
       y: 9.045368809
       z: 0.6
 
-  demarcate_blue_points: #必须与下面gui标定数量相等
+  demarcate_blue_points: #必须与下面gui标定数量相等 自己是蓝方
     0:
       x: 18.92632664
       y: 8.364839319
@@ -135,13 +138,13 @@ data:
 #      y: 4.124319419
 #      z: 0.6
 
-  map_data_path: ../lib/data/mapData2024.CSV
+  map_data_path: ../lib/data/mapData2024.CSV # 地图数据，详细见readme
 
 gui:
-  map: "lib/gui/map2023.jpg"
-  demarcate_point_num: 4
+  map: "lib/gui/map2023.jpg" # 这个没用
+  demarcate_point_num: 4 # 标定点数，与上面标定点数量相同
 
-class_name:
+class_name: # 类别名，debug界面显示的那个
   0: "car"
   1: "R1"
   2: "R2"
@@ -158,8 +161,7 @@ class_name:
   13: "R7"
   14: "B7"
 
-#根据类别索引设置 以下为模板 0代表car -1代表不识别
-set_car_armour:
+set_car_armour: # 识别编号，务必于串口协议的机器人编号一致 0 代表 car  -1 代表不识别
   0: 0
   1: 1
   2: 2

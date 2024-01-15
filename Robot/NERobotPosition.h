@@ -38,7 +38,7 @@ namespace ne
         ~NERobotPosition();
 
         /**
-         * 循环及调用，用于统计循环圈数量
+         * 新循环开始标志，用于清除缓冲区
          */
         void oneLoop();
 

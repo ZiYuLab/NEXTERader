@@ -263,7 +263,7 @@ void ne::NESolvePosition::get2DPoints(ne::NENet & netResult, NERobotPosition & p
 
                         _result.emplace_back(tmp);
 
-                        //positionBuffer.setPosition(_carArmourIndex[eachArmour.classId], _2DLUT[(int)(aimPoint.x)][(int)(aimPoint.y)]);
+                        positionBuffer.updatePosition(tmp.ID, tmp.position); // 串口buffer
                     }
                 }
                 //_result.emplace_back();

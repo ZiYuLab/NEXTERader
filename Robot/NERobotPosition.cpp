@@ -58,13 +58,14 @@ namespace ne
 
     void NERobotPosition::updatePosition(int robotID, cv::Point2f position)
     {
-        if (_timeCou >= _clearDelayTime)
-        {
-            _timeCou = 0;
-            positionBufferInit();
-        }
-        _robotPositionBuffer[(robotID / 100) * 7 + robotID % 100].ID = robotID;
-        _robotPositionBuffer[(robotID / 100) * 7 + robotID % 100].position = position;
+        setPosition(robotID, position.x, position.y);
+//        if (_timeCou >= _clearDelayTime)
+//        {
+//            _timeCou = 0;
+//            positionBufferInit();
+//        }
+//        _robotPositionBuffer[(robotID / 100) * 7 + robotID % 100].ID = robotID;
+//        _robotPositionBuffer[(robotID / 100) * 7 + robotID % 100].position = position;
     }
 
     void NERobotPosition::positionBufferInit()
@@ -80,6 +81,7 @@ namespace ne
     void NERobotPosition::oneLoop()
     {
         _timeCou++;
+        clearBuffers();
         // std::cout << _timeCou << std::endl;
     }
 

@@ -28,7 +28,7 @@ namespace ne
         bool debugWrite_ = false;
         bool showWrite_ = false;
         bool threadRun_ = true;
-        char * DevicePath_;
+        std::string DevicePath_;
         int fd_;
         int init();
         static std::mutex mutSerialWriteBuffers_;
@@ -49,7 +49,7 @@ namespace ne
         bool isOpen() const;
 
 
-        NESerial(char *DevicePlace);
+        NESerial(std::string DevicePlace);
         ~NESerial();
 
         // --------------------串口写----------------------

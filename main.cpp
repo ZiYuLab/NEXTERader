@@ -26,6 +26,9 @@ int main()
     NEDemarcatePose demarcatePose(config);
     NESolvePosition solvePosition(config);
     NERobotPosition robotPosition(config);
+    NESerial serial(config.getConfig()["serial_path"].as<std::string>());
+    //serial.debugWrite();
+    int bufferID = serial.genWriteThreat(10, robotPosition.cmdID, robotPosition.exportBuffers(), robotPosition.sizeEach);
 
     // 读取地图数据
     LOG_INFO("Read map data!");
@@ -63,7 +66,7 @@ int main()
     while (true)
     {
         stream.timerStart();
-        //robotPosition.oneLoop();
+        robotPosition.oneLoop();
         if (!stream.getFrame())
             break;
 
@@ -80,10 +83,11 @@ int main()
 
         stream.show("Map", NE_STREAM_MAP, 0.3);
 
+        serial.updateToWriteBuffer(bufferID, robotPosition.exportBuffers());
+
         stream.timerEnd();
         stream.drawFPS();
         stream.show("Source", NE_STREAM_SOURCE);
-
 
         //stream.timerEnd();
         //LOG_INFO("FPS:" << stream.getFPS());
