@@ -3,7 +3,7 @@
 # 配置文件
 
 our: "red" # 我方颜色，用于确定标定数据
-serial_path: "/dev/ttyUSB0" # 串口，没有串口却想看串口数据可以在main函数循环前调用方法 serial.debugWrite()
+serial_path: "/dev/ttyUSB0" # 串口，没有串口却想看串口数据可以在main函数创建写线程前调用方法 serial.debugWrite()
 
 robot: # 设置机器人基本信息
   middle_robot_height: 0.4 # 此处设置的机器人平均高度一半，用于计算yolo框框中心到地面距离
