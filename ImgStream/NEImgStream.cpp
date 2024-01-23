@@ -85,13 +85,18 @@ ne::NEImgStream::NEImgStream(ne::NEConfig &config)
         _type = TYPE_T::CAMERA_USB;
         int usbCamID = _config.getConfig()["source"]["usb_camera_path"].as<int>();
         //CHECK_PATH(_path.c_str());
-        _cap.set(cv::CAP_PROP_BRIGHTNESS, 2);
-        //_cap.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
         _cap.open(usbCamID);
+        // 一些设置，还有一定问题
+        _cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+        _cap.set(cv::CAP_PROP_BRIGHTNESS, 20);
+        _cap.set(cv::CAP_PROP_FPS, 30);
+        _cap.set(cv::CAP_PROP_FRAME_WIDTH, 1280);
+        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, 960);
+
         if (!_cap.isOpened())
         LOG_ERROR("USB Camera Open Fail!");
 
-        sourceInfo.row = (int)_cap.get(cv::CAP_PROP_FRAME_WIDTH);
+        sourceInfo.row = (int)_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
         sourceInfo.col = (int)_cap.get(cv::CAP_PROP_FRAME_WIDTH);
     }
     else

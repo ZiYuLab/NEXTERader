@@ -21,6 +21,18 @@ int main()
     CHECK_PATH("../Config/config.yaml");
     auto config = NEConfig("../Config/config.yaml");
 
+//    NEImgStream imgStream(config);
+//
+//    while (true)
+//    {
+//        imgStream.getFrame();
+//        imgStream.show("test", NE_STREAM_SOURCE);
+//        //std::cout << imgStream.sourceInfo.row << std::endl;
+//        if (imgStream.waitKey(27, 1))
+//            break;
+//    }
+
+
     NENet neNet(config);
     NEImgStream stream(config);
     NEDemarcatePose demarcatePose(config);
