@@ -1,90 +1,166 @@
 #include <cstdio>
 #include "HikCam.hpp"
-HikCam::HikCam() = default;
-HikCam::~HikCam() {
-    nRet = MV_CC_FreeImageBuffer(handle, (&pFrame));
-    /*
-    if(nRet == MV_OK)
-         printf("[Camera] free image buffer succeed!\n");
-    else printf("[Camera] free image buffer failed!\n");
-     */
+
+bool PrintDeviceInfo(MV_CC_DEVICE_INFO* pstMVDevInfo)
+{
+    if (NULL == pstMVDevInfo)
+    {
+        printf("The Pointer of pstMVDevInfo is NULL!\n");
+        return false;
+    }
+    if (pstMVDevInfo->nTLayerType == MV_GIGE_DEVICE)
+    {
+        int nIp1 = ((pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0xff000000) >> 24);
+        int nIp2 = ((pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0x00ff0000) >> 16);
+        int nIp3 = ((pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0x0000ff00) >> 8);
+        int nIp4 = (pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0x000000ff);
+        // ch:打印当前相机ip和用户自定义名字 | en:print current ip and user defined name
+        printf("Device Model Name: %s\n", pstMVDevInfo->SpecialInfo.stGigEInfo.chModelName);
+        printf("CurrentIp: %d.%d.%d.%d\n" , nIp1, nIp2, nIp3, nIp4);
+        printf("UserDefinedName: %s\n\n" , pstMVDevInfo->SpecialInfo.stGigEInfo.chUserDefinedName);
+    }
+    else if (pstMVDevInfo->nTLayerType == MV_USB_DEVICE)
+    {
+        printf("Device Model Name: %s\n", pstMVDevInfo->SpecialInfo.stUsb3VInfo.chModelName);
+        printf("UserDefinedName: %s\n\n", pstMVDevInfo->SpecialInfo.stUsb3VInfo.chUserDefinedName);
+    }
+    else
+    {
+        printf("Not support.\n");
+    }
+    return true;
 }
 
-int HikCam::StartDevice(int serial_number)
-{   //打开设备
-    MV_CC_DEVICE_INFO_LIST stDeviceList;
-    memset(&stDeviceList, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
+HikCam::HikCam()
+{
+    spdlog::info("Start Hik Device");
 
-    //枚举设备
-    nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
-    if(MV_OK != nRet)
+
+    memset(&stDeviceList_, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
+
+    // 枚举设备
+    nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList_);
+    if (MV_OK != nRet)
     {
-        printf("EnumDevices failed! nRet [%x]\n", nRet);
-        return -1;
+        spdlog::error("Cam MV_CC_EnumDevices fail! nRet {}", nRet);
+        return ;
     }
-    if(stDeviceList.nDeviceNum > 0) //设备数量不为0
+
+    if (stDeviceList_.nDeviceNum > 0)
     {
-        nRet = MV_CC_CreateHandle(&handle, stDeviceList.pDeviceInfo[serial_number]);
-        if(MV_OK != nRet)
+        for (int i = 0; i < stDeviceList_.nDeviceNum; i++)
         {
-            printf("CreateHandle failed! nRet [%x]\n", nRet);
-            return -1;
-        }
-        nRet = MV_CC_OpenDevice(handle);
-        if(MV_OK == nRet)
-        {
-            printf("[Camera] open succeed!\n");
-            return serial_number;
-        }
-        if(MV_OK != nRet) {
-            printf("[Camera] open failed!\n");
-            return -1;
+            spdlog::info("Cam Device: {}", i);
+            MV_CC_DEVICE_INFO * pDeviceInfo = stDeviceList_.pDeviceInfo[i];
+
+            if (pDeviceInfo == nullptr)
+            {
+                return ;
+            }
+            PrintDeviceInfo(pDeviceInfo);
+            deviceNum_ = i + 1;
         }
     }
     else
     {
-    printf("[Camera] Find No Devices!\n");
-    return -1;
-    }
-    return serial_number;
-}
-
-
-bool HikCam::SetStreamOn()
-{
-    //开始采集
-    //设置触发模式为off
-    this->nRet = MV_CC_SetEnumValue(handle, "TriggerMode", 0);
-    if(MV_OK != nRet)
-    {
-        printf("[Camera] SetEnumValue failed! nRet [%x]!\n", nRet);
-        return false;
-    }
-
-    //设置采集模式为连续采集
-    this->nRet = MV_CC_SetEnumValue(handle, "AcquisitionMode", 2);
-    if(MV_OK != nRet)
-    {
-        printf("[Camera] SetEnumValue failed! nRet [%x]!\n", nRet);
-        return false;
-    }
-    //开始取流
-    nRet = MV_CC_StartGrabbing(handle);
-    if(MV_OK == nRet)
-    {
-        printf("[Camera] StartGrabbing succeed!\n");
-        return true;
-    }
-    else
-    {
-        printf("[Camera] StartGrabbing failed! nRet [%x]\n", nRet);
-        return false;
+        spdlog::error("Cam Find No Devices!");
+        return ;
     }
 }
-
-
-bool HikCam::SetPixelFormat(int format)
+HikCam::~HikCam()
 {
+
+//    nRet = MV_CC_FreeImageBuffer(handleCamLeft_, (&pFrame));
+//    nRet = MV_CC_FreeImageBuffer(, (&pFrame));
+    stopDevice();
+
+}
+
+bool HikCam::startDevice(int leftDeviceNum, int rightDeviceNum)
+{
+    if (leftDeviceNum >= deviceNum_ || rightDeviceNum >= deviceNum_)
+    {
+        spdlog::error("Cam Error Device Num: {} or {} !", leftDeviceNum, rightDeviceNum);
+        return false;
+    }
+
+    // 创建句柄
+    nRet = MV_CC_CreateHandle(&handleCamLeft_, stDeviceList_.pDeviceInfo[leftDeviceNum]);
+    if (nRet != MV_OK)
+    {
+        spdlog::error("MV_CC_CreateHandle Right fail! nRet {}", nRet);
+        return false;
+    }
+    nRet = MV_CC_CreateHandle(&handleCamRight_, stDeviceList_.pDeviceInfo[rightDeviceNum]);
+    if (nRet != MV_OK)
+    {
+        spdlog::error("MV_CC_CreateHandle Right fail! nRet {}", nRet);
+        return false;
+    }
+
+
+    // 打开设备
+    nRet = MV_CC_OpenDevice(handleCamLeft_);
+    if (nRet != MV_OK)
+    {
+        printf("MV_CC_OpenDevice fail! nRet [%x]\n", nRet);
+        spdlog::error("MV_CC_OpenDevice fail! LEFT nRet {}", nRet);
+        return false;
+    }
+    nRet = MV_CC_OpenDevice(handleCamRight_);
+    if (nRet != MV_OK)
+    {
+        printf("MV_CC_OpenDevice fail! nRet [%x]\n", nRet);
+        spdlog::error("MV_CC_OpenDevice fail! RIGHT nRet {}", nRet);
+        return false;
+    }
+
+    // 关掉自动帧率
+    nRet = MV_CC_SetBoolValue(handleCamLeft_, "AcquisitionFrameRateEnable", false);
+    if (MV_OK != nRet)
+    {
+        printf("set AcquisitionFrameRateEnable fail! LEFT nRet [%x]\n", nRet);
+        return false;
+    }
+    nRet = MV_CC_SetBoolValue(handleCamRight_, "AcquisitionFrameRateEnable", false);
+    if (MV_OK != nRet)
+    {
+        printf("set AcquisitionFrameRateEnable fail! nRet RIGHT [%x]\n", nRet);
+        return false;
+    }
+
+#if 1
+    // 设置触发模式为on
+    // set trigger mode as on
+    nRet = MV_CC_SetEnumValue(handleCamLeft_, "TriggerMode", 1);
+    if (MV_OK != nRet)
+    {
+        printf("MV_CC_SetTriggerMode fail! nRet [%x]\n", nRet);
+        spdlog::error("MV_CC_SetTriggerMode fail! LEFT nRet {}", nRet);
+        return false;
+    }
+    nRet = MV_CC_SetEnumValue(handleCamRight_, "TriggerMode", 1);
+    if (MV_OK != nRet)
+    {
+        printf("MV_CC_SetTriggerMode fail! nRet [%x]\n", nRet);
+        spdlog::error("MV_CC_SetTriggerMode fail! RIGHT nRet {}", nRet);
+        return false;
+    }
+    // 设置触发模式
+    nRet = MV_CC_SetEnumValue(handleCamLeft_, "TriggerSource", MV_TRIGGER_SOURCE_SOFTWARE);
+    if (nRet != MV_OK)
+    {
+        spdlog::error("MV_CC_SetTriggerSource fail! LEFT nRet {}", nRet);
+        return false;
+    }
+    nRet = MV_CC_SetEnumValue(handleCamRight_, "TriggerSource", MV_TRIGGER_SOURCE_SOFTWARE);
+    if (nRet != MV_OK)
+    {
+        spdlog::error("MV_CC_SetTriggerSource fail! RIGHT nRet {}", nRet);
+        return false;
+    }
+
+
     /*
     MVCC_ENUMVALUE value ;
     MVCC_ENUMVALUE *p = &value;
@@ -95,299 +171,273 @@ bool HikCam::SetPixelFormat(int format)
             printf("%d",value.nSupportValue);
     }
                        */
-    nRet = MV_CC_SetPixelFormat(handle, format);
+    nRet = MV_CC_SetPixelFormat(handleCamLeft_, PixelType_Gvsp_RGB8_Packed);
     if(nRet != MV_OK) {
-        printf("[Camera] setPixelFormat failed! nRet [%x]\n", nRet);
+        printf("[Camera] setPixelFormat L failed! nRet [%x]\n", nRet);
         return false;
     }
+    nRet = MV_CC_SetPixelFormat(handleCamRight_, PixelType_Gvsp_RGB8_Packed);
+    if(nRet != MV_OK) {
+        printf("[Camera] setPixelFormat R failed! nRet [%x]\n", nRet);
+        return false;
+    }
+
+
+    //设置曝光时间
+    nRet = MV_CC_SetFloatValue(this->handleCamLeft_, "ExposureTime", 10000);
+    if(nRet == MV_OK)
+    {
+        printf("[Camera] 曝光值L设置成功\n");
+    }
+    else
+    {
+        printf("[Camera] 曝光值L设置失败\n");
+        return false;
+    }
+
+    nRet = MV_CC_SetFloatValue(this->handleCamRight_, "ExposureTime", 10000);
+    if(nRet == MV_OK)
+    {
+        printf("[Camera] 曝光值R设置成功\n");
+    }
+    else
+    {
+        printf("[Camera] 曝光值R设置失败\n");
+        return false;
+    }
+
+
+    //曝光增益
+    nRet = MV_CC_SetFloatValue(handleCamLeft_, "Gain", 15);
+    if(nRet == MV_OK)
+    {
+        printf("[CAMERA] 设置曝光增益L成功！\n");
+    }
+    else
+    {
+        printf("[CAMERA] 设置曝光增益L失败！\n");
+        return false;
+    }
+
+    nRet = MV_CC_SetFloatValue(handleCamRight_, "Gain", 15);
+    if(nRet == MV_OK)
+    {
+        printf("[CAMERA] 设置曝光增益R成功！\n");
+    }
+    else
+    {
+        printf("[CAMERA] 设置曝光增益R失败！\n");
+        return false;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif
+    // 开始取流
+    nRet = MV_CC_StartGrabbing(handleCamLeft_);
+    if (nRet != MV_OK)
+    {
+        spdlog::error("MV_CC_StartGrabbing fail! LEFT nRet {}", nRet);
+        return false;
+    }
+    nRet = MV_CC_StartGrabbing(handleCamRight_);
+    if (nRet != MV_OK)
+    {
+        spdlog::error("MV_CC_StartGrabbing fail! RIGHT nRet {}", nRet);
+        return false;
+    }
+
+    // 停止取流
+    // end grab image
+    nRet = MV_CC_StopGrabbing(handleCamLeft_);
+    if (MV_OK != nRet)
+    {
+        spdlog::error("MV_CC_StopGrabbing fail! LEFT nRet {}", nRet);
+        return false;
+    }
+    nRet = MV_CC_StopGrabbing(handleCamRight_);
+    if (MV_OK != nRet)
+    {
+        spdlog::error("MV_CC_StopGrabbing fail! RIGHT nRet {}", nRet);
+        return false;
+    }
+
+    nRet = MV_CC_StartGrabbing(handleCamLeft_);
+    if (nRet != MV_OK)
+    {
+        spdlog::error("MV_CC_StartGrabbing fail! LEFT nRet {}", nRet);
+        return false;
+    }
+    nRet = MV_CC_StartGrabbing(handleCamRight_);
+    if (nRet != MV_OK)
+    {
+        spdlog::error("MV_CC_StartGrabbing fail! RIGHT nRet {}", nRet);
+        return false;
+    }
+
+    // 获取基本取流信息
+    memset(&stParamLeft_, 0, sizeof(MVCC_INTVALUE));
+    memset(&stParamRight_, 0, sizeof(MVCC_INTVALUE));
+
+    nRet = MV_CC_GetIntValue(handleCamLeft_, "PayloadSize", &stParamLeft_);
+    if (MV_OK != nRet)
+    {
+        spdlog::error("Get PayloadSize fail! LEFT nRet {}", nRet);
+        return false;
+    }
+    nRet = MV_CC_GetIntValue(handleCamRight_, "PayloadSize", &stParamRight_);
+    if (MV_OK != nRet)
+    {
+        spdlog::error("Get PayloadSize fail! RIGHT nRet {}", nRet);
+        return false;
+    }
+
+
+    pDataL_ = (unsigned char *)malloc(sizeof(unsigned char) * stParamLeft_.nCurValue);
+    pDataR_ = (unsigned char *)malloc(sizeof(unsigned char) * stParamRight_.nCurValue);
+    if (pDataL_ == nullptr || pDataR_ == nullptr)
+    {
+        return false;
+    }
+    nDataSizeLeft_ = stParamLeft_.nCurValue;
+    nDataSizeRight_ = stParamRight_.nCurValue;
+
+    stImageInfoRight_ = {0};
 
     return true;
 }
-//设置像素格式
-bool HikCam::SetResolution(int width, int height)
+
+bool HikCam::getFrame(cv::Mat &cvMatL, cv::Mat &cvMatR)
 {
-    nRet = MV_OK;
-    nRet = MV_CC_SetIntValue(this->handle, "Width", width);
-    if(nRet != MV_OK)
+
+    // 触发
+    nRet = MV_CC_SetCommandValue(handleCamLeft_, "TriggerSoftware");
+    if (MV_OK != nRet)
     {
-        printf("[Camera] setResolution failed! nRet [%x]\n", nRet);
+        printf("failed in TriggerSoftware[%X]\n", nRet);
+        spdlog::error("failed in TriggerSoftware LEFT nRet {}", nRet);
         return false;
     }
-    nRet = MV_CC_SetIntValue(this->handle, "Height", height);
-
-    if(nRet == MV_OK)
+    nRet = MV_CC_SetCommandValue(handleCamRight_, "TriggerSoftware");
+    if (MV_OK != nRet)
     {
-        printf("[Camera] setResolution succeed!\n");
-        return true;
-    }
-    else
-    {
-        printf("setResolution failed!\n");
-        printf("[Camera] setResolution failed! nRet [%x]\n", nRet);
-        return false;
-    }
-}
-
-bool HikCam::SetExposureTime(float ExposureTime)
-{   //设置曝光时间
-    nRet = MV_CC_SetFloatValue(this->handle, "ExposureTime", ExposureTime);
-    if(nRet == MV_OK)
-    {
-        printf("[Camera] 曝光值设置成功\n");
-        return true;
-    }
-    else
-    {
-        printf("[Camera] 曝光值设置失败\n");
-        return false;
-    }
-}
-
-bool HikCam::SetFrameRate(float FrameRate)
-{
-    nRet = MV_CC_SetFrameRate(handle,FrameRate);
-    if(nRet == MV_OK)
-    {
-        printf("[Camera] 帧率设置成功\n");
-        return true;
-    }
-    else
-    {
-        printf("[Camera] 帧率设置失败\n");
-        return false;
-    }
-}
-float HikCam::GetFrameRate()
-{
-    nRet = MV_CC_GetFloatValue(handle, "ResultingFrameRate", pFrameRate);
-    return FrameRate.fCurValue;
-}
-
-bool HikCam::SetGAIN(float ExpGain)
-{   //曝光增益
-    nRet = MV_CC_SetFloatValue(handle, "Gain", ExpGain);
-    if(nRet == MV_OK)
-    {
-        printf("[CAMERA] 设置曝光增益成功！\n");
-        return true;
-    }
-    else
-    {
-        printf("[CAMERA] 设置曝光增益失败！\n");
-        return false;
-    }
-}
-
-bool HikCam::Set_Auto_BALANCE()
-{   //自动白平衡（具有记忆功能）
-    this->nRet = MV_CC_SetEnumValue(this->handle, "BalanceWhiteAuto", 1);
-    if(nRet != MV_OK)
-    {
-        printf("[CAMERA] 自动白平衡设置失败！\n");
-        return false;
-    }
-    else
-    {
-        printf("[CAMERA] 自动白平衡设置成功！\n");
-        return true;
-    }
-}
-
-bool HikCam::Set_BALANCE(int value, unsigned int value_number)
-{   //手动白平衡（具有记忆功能））
-    //关闭自动白平衡
-    this->nRet = MV_CC_SetEnumValue(handle, "BalanceWhiteAuto", MV_BALANCEWHITE_AUTO_OFF);
-    if(nRet != MV_OK)
-    {
-        printf("[CAMERA] 关闭自动白平衡失败！\n");
+        printf("failed in TriggerSoftware[%X]\n", nRet);
+        spdlog::error("failed in TriggerSoftware RIGHT nRet {}", nRet);
         return false;
     }
 
-    //设置RGB三通道白平衡值
-    if(value == 0)
-    {
-        this->nRet = MV_CC_SetBalanceRatioRed(handle, value_number);
+    stImageInfoLeft_ = {0};
+    stImageInfoRight_ = {0};
 
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] set R_Balance succeed！\n");
-            return true;
-        }
-        else
-        {
-            printf("[CAMERA] set R_Balance failed！\n");
-            return false;
-        }
-    }
-    else if(value == 1)
+    nRet = MV_CC_GetOneFrameTimeout(handleCamLeft_, pDataL_, nDataSizeLeft_, &stImageInfoLeft_, 1000);
+    if (MV_OK != nRet)
     {
-        this->nRet = MV_CC_SetBalanceRatioGreen(handle, value_number);
-
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] set G_Balance succeed！\n");
-        }
-        else
-        {
-            printf("[CAMERA] set G_Balance failed！\n");
-            return false;
-        }
+        printf("Get One Frame failed![%x]\n", nRet);
+        spdlog::error("Get One Frame failed! LEFT nRet {}", nRet);
+        return false;
     }
-    else if(value == 2)
+    nRet = MV_CC_GetOneFrameTimeout(handleCamRight_, pDataR_, nDataSizeRight_, &stImageInfoRight_, 1000);
+    if (MV_OK != nRet)
     {
-        this->nRet = MV_CC_SetBalanceRatioBlue(handle, value_number);
-
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] set B_Balance succeed！\n");
-        }
-        else
-        {
-            printf("[CAMERA] set B_Balance failed！\n");
-            return false;
-        }
+        printf("Get One Frame failed![%x]\n", nRet);
+        spdlog::error("Get One Frame failed! RIGHT nRet {}", nRet);
+        return false;
     }
+
+
+    cv::Mat srcL = cv::Mat(stImageInfoLeft_.nHeight, stImageInfoLeft_.nWidth, CV_8UC3);
+    cv::Mat srcR = cv::Mat(stImageInfoRight_.nHeight, stImageInfoRight_.nWidth, CV_8UC3);
+
+    memcpy(srcL.data, pDataL_, stImageInfoLeft_.nWidth * stImageInfoLeft_.nHeight * 3);
+    memcpy(srcR.data, pDataR_, stImageInfoRight_.nWidth * stImageInfoRight_.nHeight * 3);
+
+    if (srcL.empty() || srcR.empty())
+    {
+        spdlog::error("Frame EMPTY!!");
+    }
+
+    cv::cvtColor(srcL, cvMatL, cv::COLOR_RGB2BGR);
+    cv::cvtColor(srcR, cvMatR, cv::COLOR_RGB2BGR);
+
     return true;
+
 }
 
-bool HikCam::Set_Gamma(bool set_status,double dGammaParam)
-{   //设置Gamma值
-    if(set_status)
+void HikCam::stopDevice()
+{
+    // 停止取流
+    // end grab image
+    nRet = MV_CC_StopGrabbing(handleCamLeft_);
+    if (MV_OK != nRet)
     {
-        nRet = MV_CC_SetEnumValue(handle, "Gamma", 1);
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] 设置Gamma值成功！\n");
-            return true;
-        }
-        else
-        {
-            printf("[CAMERA] 设置Gamma值失败！\n");
-            return false;
-        }
+        spdlog::error("MV_CC_StopGrabbing fail! LEFT nRet {}", nRet);
+        return;
     }
-    else
+    // 关闭设备
+    // close device
+    nRet = MV_CC_CloseDevice(handleCamLeft_);
+    if (MV_OK != nRet)
     {
-        nRet = MV_CC_SetEnumValue(handle, "Gamma", 0);
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] 关闭Gamma值成功！\n");
-            return true;
-        }
-        else
-        {
-            printf("[CAMERA] 关闭Gamma值失败！\n");
-            return false;
-        }
+        spdlog::error("MV_CC_CloseDevice fail! LEFT nRet {}", nRet);
+        return;
     }
-}
+    // 销毁句柄
+    // destroy handle
+    nRet = MV_CC_DestroyHandle(handleCamLeft_);
+    if (MV_OK != nRet)
+    {
+        spdlog::error("MV_CC_DestroyHandle fail! LEFT nRet {}", nRet);
+        return;
+    }
 
-bool HikCam::Color_Correct(bool value)
-{   //设置色彩校正
-    if(value)
-    {
-        nRet = MV_CC_SetEnumValue(handle, "ColorCorrection", 1);
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] 设置色彩校正成功！\n");
-            return true;
-        }
-        else
-        {
-            printf("[CAMERA]设置色彩校正失败！\n");
-            return false;
-        }
-    }
-    else
-    {
-        nRet = MV_CC_SetEnumValue(handle, "ColorCorrection", 0);
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] 关闭色彩校正成功！\n");
-            return true;
-        }
-        else
-        {
-            printf("[CAMERA] 关闭色彩校正失败！\n");
-            return false;
-        }
-    }
-}
 
-bool HikCam::Set_Contrast(bool set_status,int dContrastParam)
-{   //设置对比度
-    if(set_status)
+
+    // 停止取流
+    // end grab image
+    nRet = MV_CC_StopGrabbing(handleCamRight_);
+    if (MV_OK != nRet)
     {
-        nRet = MV_CC_SetEnumValue(handle, "Contrast", 1);
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] 设置对比度成功！\n");
-            return true;
-        }
-        else
-        {
-            printf("[CAMERA] 设置对比度失败！\n");
-            return false;
-        }
+        spdlog::error("MV_CC_StopGrabbing fail! RIGHT nRet {}", nRet);
+        return;
     }
-    else
+    // 关闭设备
+    // close device
+    nRet = MV_CC_CloseDevice(handleCamRight_);
+    if (MV_OK != nRet)
     {
-        nRet = MV_CC_SetEnumValue(handle, "Contrast", 0);
-        if(nRet == MV_OK)
-        {
-            printf("[CAMERA] 关闭对比度成功！\n");
-            return true;
-        }
-        else
-        {
-            printf("[CAMERA] 关闭对比度失败！\n");
-            return false;
-        }
+        spdlog::error("MV_CC_CloseDevice fail! RIGHT nRet {}", nRet);
+        return;
+    }
+    // 销毁句柄
+    // destroy handle
+    nRet = MV_CC_DestroyHandle(handleCamRight_);
+    if (MV_OK != nRet)
+    {
+        spdlog::error("MV_CC_DestroyHandle fail! RIGHT nRet {}", nRet);
+        return;
+    }
+
+    if (pDataL_)
+    {
+        free(pDataL_);
+        pDataL_ = nullptr;
+    }
+    if (pDataR_)
+    {
+        free(pDataL_);
+        pDataL_ = nullptr;
     }
 }
 
-int HikCam::Get_TIMESTAMP() const
-{   //获取时间戳
-    std::chrono::_V2::steady_clock::time_point time_start = std::chrono::_V2::steady_clock::now();
-    return ((int)time_start.time_since_epoch().count() - timestamp_offset);
-}
-
-void HikCam::GetMat(cv::Mat &dst){
-        // ch:获取数据包大小 | en:Get payload size
-        MVCC_INTVALUE stParam;
-        memset(&stParam, 0, sizeof(MVCC_INTVALUE));
-        nRet = MV_CC_GetIntValue(handle, "PayloadSize", &stParam);
-        if (MV_OK != nRet)
-        {
-            printf("[CAMERA] Get PayloadSize fail! nRet [0x%x]\n", nRet);
-        }
-
-        MV_FRAME_OUT_INFO_EX stImageInfo = {0};
-        memset(&stImageInfo, 0, sizeof(MV_FRAME_OUT_INFO_EX));
-        auto * pData = (unsigned char *)malloc(sizeof(unsigned char) * stParam.nCurValue);
-        if (NULL == pData){
-        }
-        unsigned int nDataSize = stParam.nCurValue;
-
-        //从缓存区读取图像
-        nRet = MV_CC_GetOneFrameTimeout(handle, pData, nDataSize, &stImageInfo, 1000);
-        if(nRet != MV_OK){
-            printf("[CAMERA] No data[%x]\n", nRet);
-        }
 
 
-        cv::Mat src = cv::Mat(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC1);
-        memcpy(src.data, pData, stImageInfo.nWidth * stImageInfo.nHeight * 1);
-        cv::cvtColor(src, dst, cv::COLOR_BayerGR2BGR);
-
-        /*
-        cv::Mat src = cv::Mat(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC3);
-        memcpy(src.data, pData, stImageInfo.nWidth * stImageInfo.nHeight * 3);
-        cv::cvtColor(src, dst, cv::COLOR_RGB2BGR);
-        */
-
-        if(pData){
-            delete[] pData;
-            pData = NULL;
-        }
-}

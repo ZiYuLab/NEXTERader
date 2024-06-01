@@ -15,17 +15,19 @@
 #include "NEConfig.h"
 #include "NENet.h"
 #include "NEImgStream.h"
-#include "NERobot.h"
-#include "NERobotPosition.h"
+#include "StereoSolveDefine.hpp"
+//#include "NERobot.h"
+//#include "NERobotPosition.h"
 
 namespace ne
 {
     class NESolvePosition{
     private:
-        NEConfig _config;
-        std::vector<std::vector<cv::Point2f>> _2DLUT; // 二维坐标查找表
-        int _carIndex = 0;
-        std::vector<int> _carArmourIndex;
+        NEConfig config_;
+        NEConfig configCam_;
+        std::vector<std::vector<Eigen::Vector2f>> _2DLUT; // 二维坐标查找表
+//        int _carIndex = 0;
+//        std::vector<int> _carArmourIndex;
         bool isInIt(const std::vector<cv::Point3f> & face, Eigen::Vector3f & point);
 
         /**
@@ -40,14 +42,14 @@ namespace ne
 
     public:
 
-        std::vector<ne::robot_t> _result;
+//        std::vector<ne::robot_t> _result;
         NESolvePosition() = default;
-        NESolvePosition(NEConfig & config);
+        NESolvePosition(NEConfig & config, NEConfig &configCam);
         ~NESolvePosition();
 
-        bool init(int frameRow, int frameCol, std::vector<std::vector<cv::Point3f>> & mapData, std::vector<cv::Point2f> & camData);
-        void get2DPoints(ne::NENet & netResult, NERobotPosition & positionBuffer);
-        std::vector<ne::robot_t> getResult();
+        bool init(int frameRow, int frameCol, std::vector<std::vector<cv::Point3f>> & mapData, std::vector<cv::Point2f> & camData, StereoParam_t stereoParam, int type); // type 右1 左-1
+        Eigen::Vector2f get2DPoints(Eigen::Vector2f Puv);
+//        std::vector<ne::robot_t> getResult();
     };
 
 }

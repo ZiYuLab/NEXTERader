@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <MvCameraControl.h>
 #include <chrono>
+#include <spdlog/spdlog.h>
 
 typedef enum GAIN_MODE_{
     R_CHANNEL,
@@ -17,8 +18,24 @@ typedef enum GAIN_MODE_{
 
 class HikCam
 {
+    int deviceNum_ = 0;
+    MV_CC_DEVICE_INFO_LIST stDeviceList_;
+
     int nRet = MV_OK;
-    void* handle = nullptr;
+    void* handleCamLeft_ = nullptr;
+    void* handleCamRight_ = nullptr;
+
+    MVCC_INTVALUE stParamLeft_;
+    MVCC_INTVALUE stParamRight_;
+    MV_FRAME_OUT_INFO_EX stImageInfoLeft_ = {0};
+    MV_FRAME_OUT_INFO_EX stImageInfoRight_ = {0};
+
+    unsigned char *pDataL_ = nullptr;
+    unsigned char *pDataR_ = nullptr;
+
+    unsigned int nDataSizeLeft_ = 0;
+    unsigned int nDataSizeRight_ = 0;
+
     MVCC_FLOATVALUE FrameRate;
     MVCC_FLOATVALUE *pFrameRate = &FrameRate;
     MV_FRAME_OUT pFrame = {nullptr};
@@ -29,49 +46,9 @@ public:
     HikCam();
 
     //打开设备
-    int StartDevice(int serial_number);
-
-    //开始采集
-    bool SetStreamOn();
-
-    //设置相机图像格式
-    bool SetPixelFormat(int format);
-
-    //设置图像分辨率
-    bool SetResolution(int width = 1280, int height = 1024);
-
-    //设置曝光时间
-    bool SetExposureTime(float ExposureTime);
-
-    //设置帧率
-    bool SetFrameRate(float FrameRate);
-
-    //读取实际帧率
-    float GetFrameRate();
-
-    //设置曝光增益
-    bool SetGAIN(float ExpGain);
-
-    //自动白平衡
-    bool Set_Auto_BALANCE();
-
-    //手动白平衡
-    bool Set_BALANCE(int value, unsigned int value_number);
-
-    //Gamma校正
-    bool Set_Gamma(bool set_status,double dGammaParam);
-
-    //色彩校正
-    bool Color_Correct(bool value);
-
-    //对比度调整
-    bool Set_Contrast(bool set_status,int dContrastParam);
-
-    //采集图像（原图像转rgb）
-    void GetMat(cv::Mat &dst);
-
-    //读取相机时间戳
-    int Get_TIMESTAMP() const;
+    bool startDevice(int leftDeviceNum, int rightDeviceNum);
+    void stopDevice();
+    bool getFrame(cv::Mat &cvMatL, cv::Mat &cvMatR);
 
     ~HikCam();
 };

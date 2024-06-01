@@ -11,6 +11,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <string>
+#include <spdlog/spdlog.h>
 
 #define DEBUG
 
@@ -95,6 +96,19 @@ namespace ne {
     union NE16U2NE8U {
         NE_16U ne16UIN;
         NE_8U ne8uOUT[2];
+    };
+
+    enum CamType_t
+    {
+        CAM_LEFT = 1,
+        CAM_RIGHT = 2,
+    };
+
+    enum Our_t
+    {
+        OUR_RED = 1,
+        OUR_BLUE = 2,
+        OUR_NULL = 0
     };
 
 }

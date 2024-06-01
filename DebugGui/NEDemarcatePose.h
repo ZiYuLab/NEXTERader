@@ -14,15 +14,21 @@
 
 namespace ne
 {
+
+
     class NEDemarcatePose {
     private:
         NEImgStream * _stream = nullptr;
         int _demarcatePointNum = 0;
         double _zoom = 1;
         static void mouse_event(int event, int x, int y, int flags, void* param);
+        CamType_t camType_ = CAM_LEFT;
 
     public:
         std::vector<cv::Point2f> _demarcatePoint;
+
+        std::vector<cv::Point2f> demarcatePointLeft_;
+        std::vector<cv::Point2f> demarcatePointRight_;
 
         NEDemarcatePose() = default;
         NEDemarcatePose(NEConfig & config);
@@ -33,7 +39,7 @@ namespace ne
          * @param stream
          * @result 成功或失败
          */
-        bool startDemarcate(NEImgStream & stream);
+        bool startDemarcate(NEImgStream & stream, CamType_t camType);
 
         /**
          * 标定时缩放图片

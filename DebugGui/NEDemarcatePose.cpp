@@ -5,6 +5,8 @@
 #include "NEDemarcatePose.h"
 #include <string>
 
+
+
 ne::NEDemarcatePose::NEDemarcatePose(ne::NEConfig & config)
 {
     _demarcatePointNum = config.getConfig()["gui"]["demarcate_point_num"].as<int>();
@@ -28,7 +30,11 @@ void ne::NEDemarcatePose::mouse_event(int event, int x, int y, int flags, void *
             //int ry = y * demarcatePose->_zoom;
             demarcatePose->_demarcatePoint.emplace_back(x, y);
 
-            cv::circle(demarcatePose->_stream->_frame, cv::Point(x, y), RADIUS, COLOR, THICKNESS);
+            if (demarcatePose->camType_ == CAM_LEFT)
+                cv::circle(demarcatePose->_stream->frameL, cv::Point(x, y), RADIUS, COLOR, THICKNESS);
+            else
+                cv::circle(demarcatePose->_stream->frameR, cv::Point(x, y), RADIUS, COLOR, THICKNESS);
+
 
             std::string str = std::to_string(demarcatePose->_demarcatePoint.size())  + "/";
             str += std::to_string(demarcatePose->_demarcatePointNum);
@@ -38,7 +44,12 @@ void ne::NEDemarcatePose::mouse_event(int event, int x, int y, int flags, void *
             str += std::to_string(y);
             str += ")";
 
-            cv::putText(demarcatePose->_stream->_frame, str, cv::Point(x, y), cv::FONT_HERSHEY_PLAIN, 1, COLOR);
+            if (demarcatePose->camType_ == CAM_LEFT)
+                cv::putText(demarcatePose->_stream->frameL, str, cv::Point(x, y), cv::FONT_HERSHEY_PLAIN, 1, COLOR);
+            else
+                cv::putText(demarcatePose->_stream->frameR, str, cv::Point(x, y), cv::FONT_HERSHEY_PLAIN, 1, COLOR);
+
+
 
             LOG_INFO("Point: (" << x << "," << y << ")");
         }
@@ -52,8 +63,9 @@ ne::NEDemarcatePose::~NEDemarcatePose()
 
 }
 
-bool ne::NEDemarcatePose::startDemarcate(ne::NEImgStream &stream)
+bool ne::NEDemarcatePose::startDemarcate(ne::NEImgStream &stream, CamType_t camType)
 {
+    camType_ = camType;
     _stream = &stream;
     while (true)
     {
@@ -66,7 +78,12 @@ bool ne::NEDemarcatePose::startDemarcate(ne::NEImgStream &stream)
         while (true)
         {
             key = cv::waitKey(1);
-            stream.show("Select The Frame", NE_STREAM_SOURCE, _zoom);
+
+            if (camType == CAM_LEFT)
+                stream.show("Select The LEFT Frame", NE_STREAM_SOURCE_LEFT, _zoom);
+            else
+                stream.show("Select The RIGHT Frame", NE_STREAM_SOURCE_RIGHT, _zoom);
+
             if (key == 'n') // n
             {
                 stream.getFrame();
@@ -95,7 +112,11 @@ bool ne::NEDemarcatePose::startDemarcate(ne::NEImgStream &stream)
         // 标定结束选项
         while (true)
         {
-            stream.show(WIN_NAME, NE_STREAM_SOURCE, _zoom);
+
+            if (camType == CAM_LEFT)
+                stream.show(WIN_NAME, NE_STREAM_SOURCE_LEFT, _zoom);
+            else
+                stream.show(WIN_NAME, NE_STREAM_SOURCE_RIGHT, _zoom);
 
             key = cv::waitKey(1);
             if (key == 13) // ENTER
@@ -111,6 +132,12 @@ bool ne::NEDemarcatePose::startDemarcate(ne::NEImgStream &stream)
                 else
                 {
                     cv::destroyAllWindows();
+                    if (camType == CAM_LEFT)
+                        demarcatePointLeft_ = _demarcatePoint;
+                    else
+                        demarcatePointRight_ = _demarcatePoint;
+
+                    _demarcatePoint.clear();
                     return true;
                 }
             }

@@ -22,6 +22,18 @@ set(CUDA_GEN_CODE "-gencode=arch=compute_86,code=sm_86")
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}  -std=c++17 -O0 -Xcompiler -fPIC -g -w ${CUDA_GEN_CODE}")
 # set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
+#CSerialPort
+set(CSerialPortRootPath "/usr/local/")
+include_directories(${CSerialPortRootPath}/include)
+link_directories(${CSerialPortRootPath}/lib)
+
+# fmt---------------------------------------------
+add_subdirectory(3rd/fmt EXCLUDE_FROM_ALL)
+# ------------------------------------------------
+
+# spdlog------------------------------------------
+include_directories(3rd/spdlog/include/)
+# ------------------------------------------------
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Ofast -Wfatal-errors -D_MWAITXINTRIN_H_INCLUDED")
 
@@ -31,10 +43,16 @@ include_directories(
         ImgStream/
         Serial/include/
         Robot/
+        StereoPosition/
         ReadConfig/
         DebugGui/
         SolvePosition/
         ImgStream/hik_camera
+        Tracker/
+        IOManager/
+        StereoSolvePosition/
+        Framework/
+        NERadar/
         ./
         ${EIGEN3_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
@@ -47,15 +65,18 @@ cuda_add_executable(
         main.cpp
         Net/TRTInfer/src/Inference.cpp
         Net/TRTInfer/CUDA/preprocess.cu
-        Robot/NERobotPosition.cpp
-        Serial/src/NESerial.cpp
-        Serial/src/RmCRC.cpp
         ImgStream/NEImgStream.cpp
         ReadConfig/NEConfig.cpp
         Net/NENet.cpp
         SolvePosition/NESolvePosition.cpp
         DebugGui/NEDemarcatePose.cpp
         ImgStream/hik_camera/HikCam.cpp
+        Tracker/Tracker.cpp
+        IOManager/RmCRC.cpp
+        IOManager/IOManager.cpp
+        StereoSolvePosition/StereoSolvePosition.cpp
+        Framework/MulThrCV.cpp
+        NERadar/Radar.cpp
         #Net/NENet.h
         #Camera/HikCamera/HikCamera.cpp
 )
@@ -84,6 +105,7 @@ target_link_libraries(${PROJECT_NAME}  /usr/local/cuda-12.1/targets/x86_64-linux
 target_link_libraries(${PROJECT_NAME}  nvonnxparser)
 target_link_libraries(${PROJECT_NAME}  cuda)
 target_link_libraries(${PROJECT_NAME}  ${TensorRT_LIBS})
+target_link_libraries( ${PROJECT_NAME} cserialport)
 
 #eigen3
 include_directories(/usr/include/eigen3)

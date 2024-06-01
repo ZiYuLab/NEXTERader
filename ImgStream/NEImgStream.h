@@ -15,15 +15,20 @@
 #include "NENet.h"
 #include "NEConfig.h"
 #include "NESolvePosition.h"
-#include "NERobot.h"
+//#include "NERobot.h"
 #include "HikCam.hpp"
+#include "RobotDefine.hpp"
+#include "StereoSolveDefine.hpp"
 
 namespace ne
 {
 
-#define NE_STREAM_MAP 1
-#define NE_STREAM_SOURCE 2
-
+    enum StreamType_e
+    {
+        NE_STREAM_MAP = 1,
+        NE_STREAM_SOURCE_LEFT = 2,
+        NE_STREAM_SOURCE_RIGHT = 3,
+    };
     class NEImgStream {
 
     private:
@@ -39,25 +44,39 @@ namespace ne
         //int _usb_camID = 0;
         cv::Mat _mapSource;
         cv::Mat _map;
-        cv::VideoCapture _cap;
+        cv::VideoCapture capL_;
+        cv::VideoCapture capR_;
         ne::NEConfig _config;
         std::chrono::high_resolution_clock::time_point _begin;
         double _time = 0;
         HikCam Hik;
+
+        int mapXMax = 0;
+        int mapYMax = 0;
+
+        std::vector<std::string> className_;
+        StereoParam_t *stereoParamPtr_ = nullptr;
+        bool haveInitStereo_ = false;
 
 
     public:
 
         struct info_t{
             int row = 0, col = 0;
-        } sourceInfo, mapInfo;
+        } sourceInfoL, sourceInfoR, mapInfo;
 
-        cv::Mat _frame;
+        cv::Mat frameL;
+        cv::Mat frameR;
 
         NEImgStream() = default;
         NEImgStream(NEConfig &config);
 
         ~NEImgStream();
+
+        /**
+         * 不调用这个函数就不进行双目矫正
+         */
+        void initStereo(StereoParam_t &stereoParam);
 
         /**
          * 取一帧
@@ -76,7 +95,7 @@ namespace ne
          * @param windowName
          * @param type NE_STREAM_MAP NE_STREAM_SOURCE
          */
-        void show(const std::string& windowName, int type);
+        void show(const std::string& windowName, StreamType_e type);
 
         /**
          * 按照缩放比例显示一帧
@@ -84,7 +103,7 @@ namespace ne
          * @param type 同上
          * @param zoom
          */
-        void show(const std::string& windowName, int type, double zoom);
+        void show(const std::string& windowName, StreamType_e type, double zoom);
 
         /**
          * 开启计时器
@@ -125,7 +144,8 @@ namespace ne
          * 画框框
          * @param boxSrc
          */
-        void drawBox(NENet & boxSrc);
+        void drawBoxL(NENet & boxSrc);
+        void drawBoxR(NENet & boxSrc);
 
         /**
          * 将地图数据文件读取后的内容画在小地图上供检验
@@ -137,7 +157,7 @@ namespace ne
          * 画地图
          * @param mapSrc
          */
-        void drawMap(std::vector<robot_t> & mapSrc, NENet & boxSrc);
+        void drawMap(RobotStereoData_t &&mapSrc);
     };
 }
 

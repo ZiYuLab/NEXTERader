@@ -53,8 +53,8 @@ cv::Point2f ne::NESolvePosition::box2Point(float x1, float y1, float x2, float y
 }
 
 
-ne::NESolvePosition::NESolvePosition(ne::NEConfig & config)
-    :_config(config)
+ne::NESolvePosition::NESolvePosition(ne::NEConfig & config, NEConfig &configCam)
+    :config_(config), configCam_(configCam)
 {
 
 }
@@ -64,56 +64,74 @@ ne::NESolvePosition::~NESolvePosition()
 
 }
 
-bool ne::NESolvePosition::init(int frameRow, int frameCol, std::vector<std::vector<cv::Point3f>> & mapData, std::vector<cv::Point2f> & camData)
+bool ne::NESolvePosition::init(int frameRow, int frameCol, std::vector<std::vector<cv::Point3f>> & mapData, std::vector<cv::Point2f> & camData, StereoParam_t stereoParam, int type)
 {
 
     // 准备pnp数据
     std::vector<cv::Point3f> world;
 
-    if (_config.getConfig()["our"].as<std::string>() == "red")
-        for(YAML::const_iterator it= _config.getConfig()["data"]["demarcate_red_points"].begin(); it != _config.getConfig()["data"]["demarcate_red_points"].end(); ++it)
+    auto our = config_.our();
+
+    if (our == OUR_RED)
+        for(YAML::const_iterator it= config_.getConfig()["data"]["demarcate_red_points"].begin(); it != config_.getConfig()["data"]["demarcate_red_points"].end(); ++it)
+        {
+            world.emplace_back(it->second["x"].as<float>(), it->second["y"].as<float>(), it->second["z"].as<float>());
+        }
+    else if (our == OUR_BLUE)
+        for(YAML::const_iterator it= config_.getConfig()["data"]["demarcate_blue_points"].begin(); it != config_.getConfig()["data"]["demarcate_blue_points"].end(); ++it)
         {
             world.emplace_back(it->second["x"].as<float>(), it->second["y"].as<float>(), it->second["z"].as<float>());
         }
     else
-        for(YAML::const_iterator it= _config.getConfig()["data"]["demarcate_blue_points"].begin(); it != _config.getConfig()["data"]["demarcate_blue_points"].end(); ++it)
-        {
-            world.emplace_back(it->second["x"].as<float>(), it->second["y"].as<float>(), it->second["z"].as<float>());
-        }
+    {
+        spdlog::error("Our Not Config!");
+        ASSERT(0);
+    }
 
-    ASSERT(world.size() == _config.getConfig()["gui"]["demarcate_point_num"].as<int>()); // 标定数据数量不匹配
+    ASSERT(world.size() == config_.getConfig()["gui"]["demarcate_point_num"].as<int>()); // 标定数据数量不匹配
 
     std::vector<double> cameraMatrixVec;
     std::vector<double> distCoeffsVec;
 
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["0"].as<double>());
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["1"].as<double>());
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["2"].as<double>());
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["3"].as<double>());
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["4"].as<double>());
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["5"].as<double>());
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["6"].as<double>());
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["7"].as<double>());
-    cameraMatrixVec.emplace_back(_config.getConfig()["camera_data"]["camera_matrix"]["8"].as<double>());
 
-    distCoeffsVec.emplace_back(_config.getConfig()["camera_data"]["dist_coeffs"]["0"].as<double>());
-    distCoeffsVec.emplace_back(_config.getConfig()["camera_data"]["dist_coeffs"]["1"].as<double>());
-    distCoeffsVec.emplace_back(_config.getConfig()["camera_data"]["dist_coeffs"]["2"].as<double>());
-    distCoeffsVec.emplace_back(_config.getConfig()["camera_data"]["dist_coeffs"]["3"].as<double>());
-    distCoeffsVec.emplace_back(_config.getConfig()["camera_data"]["dist_coeffs"]["4"].as<double>());
+
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["0"].as<double>());
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["1"].as<double>());
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["2"].as<double>());
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["3"].as<double>());
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["4"].as<double>());
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["5"].as<double>());
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["6"].as<double>());
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["7"].as<double>());
+    cameraMatrixVec.emplace_back(configCam_.getConfig()["camera_data"]["camera_matrix"]["8"].as<double>());
+
+    distCoeffsVec.emplace_back(configCam_.getConfig()["camera_data"]["dist_coeffs"]["0"].as<double>());
+    distCoeffsVec.emplace_back(configCam_.getConfig()["camera_data"]["dist_coeffs"]["1"].as<double>());
+    distCoeffsVec.emplace_back(configCam_.getConfig()["camera_data"]["dist_coeffs"]["2"].as<double>());
+    distCoeffsVec.emplace_back(configCam_.getConfig()["camera_data"]["dist_coeffs"]["3"].as<double>());
+    distCoeffsVec.emplace_back(configCam_.getConfig()["camera_data"]["dist_coeffs"]["4"].as<double>());
 
     cv::Mat cameraMatrix =(cv::Mat_<double>(3,3)<<cameraMatrixVec[0],cameraMatrixVec[1],cameraMatrixVec[2],
             cameraMatrixVec[3],cameraMatrixVec[4],cameraMatrixVec[5],
             cameraMatrixVec[6],cameraMatrixVec[7],cameraMatrixVec[8]);
 
-    cv::Mat distCoeffs = (cv::Mat_<double>(1, 5)<<distCoeffsVec[0],distCoeffsVec[1],distCoeffsVec[2],distCoeffsVec[3],distCoeffsVec[4]);
+//    ASSERT(stereoParam.isInit);
+//    if (type == 1)
+//    {
+//        cameraMatrix = stereoParam.cameraMatrixRight_m;
+//    }
+//    else
+//        cameraMatrix = stereoParam.cameraMatrixLeft_m;
+
+    //cv::Mat distCoeffs = (cv::Mat_<double>(1, 5)<<distCoeffsVec[0],distCoeffsVec[1],distCoeffsVec[2],distCoeffsVec[3],distCoeffsVec[4]);
 
     cv::Mat rvec;
     cv::Mat tvec;
 
     // pnp确定场地位姿
     // std::cout << camData.size() << std::endl;
-    solvePnPRansac(world, camData, cameraMatrix, distCoeffs, rvec, tvec, false, 100, 2);
+//    solvePnPRansac(world, camData, cameraMatrix, distCoeffs, rvec, tvec, false, 100, 2);
+    solvePnPRansac(world, camData, cameraMatrix, cv::Mat(), rvec, tvec, false, 100, 2);
     // solvePnP(world, camData, cameraMatrix, distCoeffs, rvec, tvec, false);
     Rodrigues(rvec, rvec);
 
@@ -159,7 +177,7 @@ bool ne::NESolvePosition::init(int frameRow, int frameCol, std::vector<std::vect
 
     for (int u = 0; u < frameCol; ++u)
     {
-        std::vector<cv::Point2f> LUTEachV; // 查找表的按列索引
+        std::vector<Eigen::Vector2f> LUTEachV; // 查找表的按列索引
         for (int v = 0; v < frameRow; ++v)
         {
             Puv << (float)u, (float)v, 1;
@@ -206,78 +224,28 @@ bool ne::NESolvePosition::init(int frameRow, int frameCol, std::vector<std::vect
 
     ASSERT(_2DLUT.size() == frameCol && _2DLUT[0].size() == frameRow); // LUT生成错误
 
-    // 获取模型输出数据INDEX 并找到车的index
-    LOG_INFO("Get car armour index!")
-    for(YAML::const_iterator it= _config.getConfig()["set_car_armour"].begin(); it != _config.getConfig()["set_car_armour"].end(); ++it)
-    {
-        _carArmourIndex.emplace_back(it->second.as<int>());
-    }
-
-    for (int i = 0; i < _carArmourIndex.size(); ++i)
-    {
-        if (_carArmourIndex[i] == 0)
-        {
-            _carIndex = i;
-            goto finish;
-        }
-    }
-    LOG_ERROR("CarArmourIndex set ERROR!, Place Check!");
-    ASSERT(0);
-    finish:
-    LOG_SUCCESS("Finish!");
     return true;
 }
 
-void ne::NESolvePosition::get2DPoints(ne::NENet & netResult, NERobotPosition & positionBuffer)
+Eigen::Vector2f ne::NESolvePosition::get2DPoints(Eigen::Vector2f Puv)
 {
-    std::vector<std::string> carArmour;
-    for(YAML::const_iterator it= _config.getConfig()["set_car_armour"].begin(); it != _config.getConfig()["set_car_armour"].end(); ++it)
+    int PuvX = (int)(Puv[0]);
+    int PuvY = (int)(Puv[1]);
+
+    ASSERT(_2DLUT.size());
+
+    if (PuvX >= _2DLUT.size())
     {
-        carArmour.emplace_back(it->second.as<std::string>());
+        spdlog::warn("The PuvX Out of The LUT!");
+        PuvX = _2DLUT.size() - 1;
     }
 
-    ASSERT(netResult._result.size()); // net输入错误，可能是没有进行推理
-    _result.clear();
-
-    for (auto each : netResult._result[0])
+    if (PuvY >= _2DLUT.at(0).size())
     {
-        if (each.classId == _carIndex)
-        {
-            for (auto eachArmour : netResult._result[0])
-            {
-                if (eachArmour.classId != _carIndex && _carArmourIndex[eachArmour.classId] != -1) // 筛选出装甲板
-                {
-                    // 匹配装甲板
-                    if (eachArmour.x1 >= each.x1 && eachArmour.x2 <= each.x2
-                        && eachArmour.y1 >= each.y1 && eachArmour.y2 <= each.y2)
-                    {
-                        cv::Point2f aimPoint = box2Point(each.x1, each.y1, each.x2, each.y2);
-                        // 不要使用round 以免超过面索引
-
-                        //std::cout << "--" << result.ID << std::endl;
-                        //std::cout << "--\n" << result.position << "\n" << std::endl;
-
-                        robot_t tmp;
-                        tmp.ID = _carArmourIndex[eachArmour.classId];
-                        tmp.position = _2DLUT[(int)(aimPoint.x)][(int)(aimPoint.y)];
-
-                        _result.emplace_back(tmp);
-
-                        positionBuffer.updatePosition(tmp.ID, tmp.position); // 串口buffer
-                    }
-                }
-                //_result.emplace_back();
-            }
-        }
+        spdlog::warn("The PuvY Out of The LUT!");
+        PuvY = _2DLUT.size() - 1;
     }
 
-    //return std::vector<cv::Point2f>();
+
+    return _2DLUT.at(PuvX).at(PuvY);
 }
-
-std::vector<ne::robot_t> ne::NESolvePosition::getResult()
-{
-
-
-    //return _result;
-}
-

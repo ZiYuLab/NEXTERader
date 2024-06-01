@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include "yaml-cpp/yaml.h"
+#include "NEInit.h"
 
 namespace ne
 {
@@ -15,14 +16,17 @@ namespace ne
     private:
         char * _configPath = nullptr;
         YAML::Node _config;
+        Our_t our_ = OUR_NULL;
 
     public:
-        NEConfig(char * configPath);
+        NEConfig(char * configPath, bool haveOur = true);
         NEConfig();
         ~NEConfig();
         void setConfigPath(char * configPath);
         void updateConfig();
         YAML::Node getConfig();
+
+        Our_t our();
 
         /**
          * 获取地图数据

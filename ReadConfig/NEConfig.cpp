@@ -9,11 +9,47 @@
 
 #include "NEInit.h"
 #include "NEConfig.h"
+#include <iostream>
 
-ne::NEConfig::NEConfig(char *configPath)
+ne::NEConfig::NEConfig(char *configPath, bool haveOur)
     :_configPath(configPath)
 {
     _config = YAML::LoadFile(configPath);
+    if (haveOur)
+    {
+        auto our = _config["our"].as<std::string>();
+        spdlog::warn("输入本队颜色,注意 输入本队颜色 (red / blue) \n>>>>");
+        std::cin >> our;
+        if (our == "red")
+        {
+            our_ = OUR_RED;
+            spdlog::info("Config Our Success!");
+            spdlog::warn("Our Color Is RED");
+            spdlog::warn("Our Color Is RED");
+            spdlog::warn("Our Color Is RED");
+            spdlog::warn("Our Color Is RED");
+            spdlog::warn("Our Color Is RED");
+        }
+        else if (our == "blue")
+        {
+            our_ = OUR_BLUE;
+            spdlog::info("Config Our Success!");
+            spdlog::warn("Our Color Is BLUE");
+            spdlog::warn("Our Color Is BLUE");
+            spdlog::warn("Our Color Is BLUE");
+            spdlog::warn("Our Color Is BLUE");
+            spdlog::warn("Our Color Is BLUE");
+        }
+        else
+        {
+            spdlog::error("Config Our Color Fail!");
+            ASSERT(0);
+            abort();
+            return;
+        }
+    }
+    else
+        spdlog::warn("Not Config Our Color!");
 }
 
 ne::NEConfig::NEConfig()
@@ -38,7 +74,7 @@ YAML::Node ne::NEConfig::getConfig()
 
 ne::NEConfig::~NEConfig()
 {
-
+;
 }
 
 std::vector<std::vector<cv::Point3f>> ne::NEConfig::getMapData(bool showMapData)
@@ -126,4 +162,9 @@ std::vector<std::vector<cv::Point3f>> ne::NEConfig::getMapData(bool showMapData)
     }
 
     return mapData;
+}
+
+ne::Our_t ne::NEConfig::our()
+{
+    return our_;
 }
